@@ -1,0 +1,143 @@
+<div role="group" aria-labelledby="drumh3d-heading">
+    <h3 id="drumh3d-heading" class="text-sm font-medium text-gray-400 mb-2">3D Drum Highway — Mockup</h3>
+    <p class="text-xs text-gray-500 mb-3">
+        Visual prototype. Renders an 8-lane drum highway populated from a
+        hardcoded demo pattern that loops indefinitely. Not yet wired to
+        song data — pick any song in the player, then switch the viz to
+        "3D Drum Highway" to see the mockup animate.
+    </p>
+
+    <!-- Palette -->
+    <div class="mt-3">
+        <label for="drumh3d-palette" class="text-xs font-medium text-gray-400 mb-1 block">Palette</label>
+        <select id="drumh3d-palette"
+            onchange="window.drumH3dSetPalette && window.drumH3dSetPalette(this.value); (window._drumH3dRenderPaletteSwatches || function(){})(this.value)"
+            class="w-full bg-dark-700 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-300 outline-none">
+            <option value="default">Default (Rocksmith classic)</option>
+            <option value="neon">Neon (saturated, electric)</option>
+            <option value="pastel">Pastel (soft, low contrast)</option>
+        </select>
+        <!-- Live preview of the 8 lane colors. Lane 7 (kick) is shown in
+             amber regardless of palette; lanes 0-6 follow the active palette. -->
+        <div class="mt-2 flex items-center gap-1" aria-hidden="true">
+            <span id="drumh3d-swatch-0" class="inline-block h-6 w-5 rounded border border-gray-700/60"></span>
+            <span id="drumh3d-swatch-1" class="inline-block h-6 w-5 rounded border border-gray-700/60"></span>
+            <span id="drumh3d-swatch-2" class="inline-block h-6 w-5 rounded border border-gray-700/60"></span>
+            <span id="drumh3d-swatch-3" class="inline-block h-6 w-5 rounded border border-gray-700/60"></span>
+            <span id="drumh3d-swatch-4" class="inline-block h-6 w-5 rounded border border-gray-700/60"></span>
+            <span id="drumh3d-swatch-5" class="inline-block h-6 w-5 rounded border border-gray-700/60"></span>
+            <span id="drumh3d-swatch-6" class="inline-block h-6 w-5 rounded border border-gray-700/60"></span>
+            <span id="drumh3d-swatch-7" class="inline-block h-6 w-5 rounded border border-gray-700/60"
+                  style="background:#ffa030"></span>
+        </div>
+        <div class="mt-1 flex items-center gap-1 text-[9px] text-gray-500 font-mono">
+            <span class="inline-block w-5 text-center">HH</span>
+            <span class="inline-block w-5 text-center">SNR</span>
+            <span class="inline-block w-5 text-center">TM1</span>
+            <span class="inline-block w-5 text-center">TM2</span>
+            <span class="inline-block w-5 text-center">FT</span>
+            <span class="inline-block w-5 text-center">CR</span>
+            <span class="inline-block w-5 text-center">RD</span>
+            <span class="inline-block w-5 text-center">KCK</span>
+        </div>
+    </div>
+
+    <!-- Demo pattern -->
+    <div class="mt-4">
+        <label for="drumh3d-pattern" class="text-xs font-medium text-gray-400 mb-1 block">Demo pattern</label>
+        <select id="drumh3d-pattern"
+            onchange="window.drumH3dSetPattern && window.drumH3dSetPattern(this.value)"
+            class="w-full bg-dark-700 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-300 outline-none">
+            <option value="rock_backbeat">Rock backbeat (kick/snare/hh, 120 BPM)</option>
+            <option value="jazz_swing">Jazz swing (ride + ghost-note comping)</option>
+            <option value="fill_showcase">Fill showcase (every variant + tom roll)</option>
+        </select>
+        <p class="text-xs text-gray-500 mt-1">
+            The fill showcase is the best read of how ghost notes, accents,
+            flams, and ride-bell hits look on the highway.
+        </p>
+    </div>
+
+    <!-- Camera angle -->
+    <div class="mt-4">
+        <label for="drumh3d-camera" class="text-xs font-medium text-gray-400 mb-1 block">
+            Camera angle <span id="drumh3d-camera-val" class="text-gray-500 font-mono">0.35</span>
+        </label>
+        <input type="range" id="drumh3d-camera"
+            min="0" max="1" step="0.05" value="0.35"
+            oninput="window.drumH3dSetCameraAngle && window.drumH3dSetCameraAngle(this.value); document.getElementById('drumh3d-camera-val').textContent = this.value"
+            class="w-full">
+        <p class="text-xs text-gray-500 mt-1">
+            0 = looking down the lanes (low angle). 1 = top-down. Drums
+            generally benefit from a steeper angle than guitar — you're
+            reading 8 horizontal positions, not 6 frets at depth.
+        </p>
+    </div>
+
+    <script>
+    (function () {
+        // Mirror of PALETTES in screen.js — kept in sync for swatch previews.
+        const PALETTES = {
+            default: [
+                0xff2828, 0xffd400, 0x2080ff, 0xff8020,
+                0x30d040, 0xa040ff, 0xff6bd5, 0x6bffe6,
+            ],
+            neon: [
+                0xff0030, 0xffe800, 0x0080ff, 0xff8030,
+                0x40ff50, 0xb050ff, 0xff40d0, 0x40ffd0,
+            ],
+            pastel: [
+                0xe89aa0, 0xefdf90, 0x9adfee, 0xefb898,
+                0xa6e0a8, 0xc4a6e0, 0xe0a6c8, 0xa6e0d8,
+            ],
+        };
+        // Lane → palette-index mapping. Mirrors LANES in screen.js (lane 7
+        // is the kick — always amber, not palette-driven).
+        const LANE_PALETTE_IDX = [7, 0, 4, 2, 5, 1, 3];
+
+        function toHex(n) {
+            return '#' + n.toString(16).padStart(6, '0');
+        }
+
+        window._drumH3dRenderPaletteSwatches = function (id) {
+            const pal = PALETTES[id] || PALETTES.default;
+            for (let i = 0; i < LANE_PALETTE_IDX.length; i++) {
+                const el = document.getElementById('drumh3d-swatch-' + i);
+                if (el) el.style.background = toHex(pal[LANE_PALETTE_IDX[i]]);
+            }
+            // Lane 7 (kick) stays amber — set via inline style in the markup.
+        };
+
+        // Hydrate controls from localStorage on load.
+        try {
+            const pSel = document.getElementById('drumh3d-palette');
+            const pat = document.getElementById('drumh3d-pattern');
+            const cam = document.getElementById('drumh3d-camera');
+            const camVal = document.getElementById('drumh3d-camera-val');
+
+            const storedPal = localStorage.getItem('drum_h3d_palette');
+            if (storedPal && PALETTES[storedPal]) pSel.value = storedPal;
+
+            const storedPat = localStorage.getItem('drum_h3d_pattern');
+            if (storedPat) {
+                // Validate by checking against known options.
+                for (const opt of pat.options) {
+                    if (opt.value === storedPat) { pat.value = storedPat; break; }
+                }
+            }
+
+            const storedCam = parseFloat(localStorage.getItem('drum_h3d_camera_angle'));
+            if (Number.isFinite(storedCam)) {
+                const c = Math.min(1, Math.max(0, storedCam));
+                cam.value = String(c);
+                camVal.textContent = c.toFixed(2);
+            }
+
+            window._drumH3dRenderPaletteSwatches(pSel.value);
+        } catch (_) {
+            // localStorage may be unavailable; fall back to markup defaults.
+            window._drumH3dRenderPaletteSwatches('default');
+        }
+    })();
+    </script>
+</div>
