@@ -1,5 +1,7 @@
 # 3D Drum Highway — Mockup
 
+![3D Drum Highway mockup screenshot](screenshots/drum-highway-3d.png)
+
 An exploratory **pure-visual** sibling of `highway_3d`. Renders an 8-lane
 drum highway (7 lanes for hand pieces + a full-width kick bar) populated
 from a hardcoded demo pattern that loops indefinitely. Not yet wired to
